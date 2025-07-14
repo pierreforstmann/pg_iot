@@ -71,17 +71,23 @@ Datum pg_iot_set(PG_FUNCTION_ARGS)
  */
 static bool is_iot(const char *schema_name, const char *table_name) 
 {
-	StringInfoData 	buf_select_parameter;
+	StringInfoData 	buf_select;
+	Oid argtypes[2] = { TEXTOID, TEXTOID };
+	SPIPlanPtr plan_ptr;
+	Datum values[2];
 	int ret_code;
 	bool result;
 
-	initStringInfo(&buf_select_parameter);
-	appendStringInfo(&buf_select_parameter, 
-			 "SELECT namespace, relname FROM iot.tables WHERE namespace = '%s' and relname = '%s'", 
-			 schema_name, table_name);
+	initStringInfo(&buf_select);
+	appendStringInfo(&buf_select, 
+			 "SELECT namespace, relname FROM iot.tables WHERE namespace = $1 and relname = $2");
         SPI_connect();
 
-	ret_code = SPI_execute(buf_select_parameter.data, false, 0);
+	plan_ptr = SPI_prepare(buf_select.data, 2, argtypes);
+        values[0] = CStringGetTextDatum(schema_name);
+        values[1] = CStringGetTextDatum(table_name);
+	ret_code = SPI_execute_plan(plan_ptr, values, NULL, false, 0);
+
 	if (ret_code != SPI_OK_SELECT)
 		elog(ERROR, "SELECT FROM iot.tables failed");
 	if (SPI_processed == 1)
