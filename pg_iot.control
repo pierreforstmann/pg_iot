@@ -1,0 +1,5 @@
+# pg_iot postgresql extension
+comment = 'pg_iot'
+default_version = '0.0.1'
+module_pathname = '$libdir/pg_set_acl'
+relocatable = false
