@@ -25,7 +25,7 @@ select * from t;
 (0 rows)
 
 --
-select pg_iot_set('public','t');
+select iot.pg_iot_set('public','t');
  pg_iot_set 
 ------------
  t

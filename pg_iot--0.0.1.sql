@@ -1,17 +1,16 @@
 --
 -- pg_iot-0.0.1.sql
 --
-DROP FUNCTION IF EXISTS pg_iot_set();
---
-CREATE FUNCTION pg_iot_set(cstring, cstring) RETURNS bool
- AS 'pg_iot', 'pg_iot_set'
- LANGUAGE C STRICT;
---
-DROP TABLE IF EXISTS iot.tables;
---
-DROP SCHEMA IF EXISTS iot;
+
+-- complain if script is sourced in psql, rather than via CREATE EXTENSION
+\echo Use "CREATE EXTENSION pg_iot" to load this file. \quit
+
 --
 CREATE SCHEMA iot;
+--
+CREATE FUNCTION iot.pg_iot_set(cstring, cstring) RETURNS bool
+ AS 'pg_iot', 'pg_iot_set'
+ LANGUAGE C STRICT;
 --
 CREATE TABLE iot.tables(
 	namespace name NOT NULL,
@@ -19,4 +18,4 @@ CREATE TABLE iot.tables(
 	PRIMARY KEY(namespace, relname)
 );
 --
-REVOKE EXECUTE ON pg_iot_set FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION iot.pg_iot_set FROM PUBLIC;

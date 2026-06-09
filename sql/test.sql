@@ -11,7 +11,7 @@ select * from t;
 delete from t;
 select * from t;
 --
-select pg_iot_set('public','t');
+select iot.pg_iot_set('public','t');
 insert into t values(1);
 select * from t;
 delete from t;

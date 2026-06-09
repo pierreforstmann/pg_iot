@@ -21,10 +21,10 @@ create extension pg_iot;
 
 ### Usage
 
-Flag table as IOT with ``pg_iot_set`` function giving schema name and table name as parameters:
+Connect as superuser and flag table as IOT with ``pg_iot_set`` function giving schema name and table name as parameters:
 
 ```
-select pg_iot_set('public','t');
+select iot.pg_iot_set('public','t');
 ```
 
 Trying to run UPDATE or DELETE on IOT table raise errors:
@@ -44,4 +44,9 @@ IOT tables are cataloged in ```iot.tables```:
  public    | t
 (1 row)
 ```
+## Limitations
+
+Currently there is no way to move an IOT table to a non-IOT table.
+
+ALTER TABLE statements for an IOT table are not defined.
 
