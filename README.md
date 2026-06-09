@@ -2,7 +2,7 @@
 
 pg_iot is a PostgreSQL extension which allows to define table as INSERT only table (IOT):
 - only INSERT and SELECT statements are allowed
-- UPDATE, DELETE, MERGE znd TRUNCATE statements are forbidden.
+- UPDATE, DELETE, MERGE and TRUNCATE statements are forbidden.
 
 
 ### Installation
