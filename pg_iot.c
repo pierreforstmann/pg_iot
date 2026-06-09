@@ -118,7 +118,7 @@ void _PG_init(void)
  */
 static void iot_executor_hook(QueryDesc *queryDesc, int eflags)
 {
-    if (queryDesc->operation == CMD_UPDATE || queryDesc->operation == CMD_DELETE)
+    if (queryDesc->operation == CMD_UPDATE || queryDesc->operation == CMD_DELETE || queryDesc->operation == CMD_MERGE)
     {
         List *rtable = queryDesc->plannedstmt->rtable;
         ListCell *lc;
@@ -139,7 +139,7 @@ static void iot_executor_hook(QueryDesc *queryDesc, int eflags)
                     relation_close(rel, AccessShareLock);
                     ereport(ERROR,
                             (errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-                             errmsg("pg_iot: UPDATE and DELETE operations are disabled on table \"%s.%s\"", schemaname, relname)));
+                             errmsg("pg_iot: UPDATE and DELETE and MERGE operations are disabled on table \"%s.%s\"", schemaname, relname)));
                 }
 
                 relation_close(rel, AccessShareLock);

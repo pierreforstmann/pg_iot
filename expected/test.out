@@ -4,6 +4,7 @@
 create extension pg_iot;
 --
 create table t(x int);
+--
 insert into t values(1);
 select * from t;
  x 
@@ -39,7 +40,7 @@ select * from t;
 (1 row)
 
 delete from t;
-ERROR:  pg_iot: UPDATE and DELETE operations are disabled on table "public.t"
+ERROR:  pg_iot: UPDATE and DELETE and MERGE operations are disabled on table "public.t"
 select * from t;
  x 
 ---
@@ -47,10 +48,22 @@ select * from t;
 (1 row)
 
 update t set x=2;
-ERROR:  pg_iot: UPDATE and DELETE operations are disabled on table "public.t"
+ERROR:  pg_iot: UPDATE and DELETE and MERGE operations are disabled on table "public.t"
 select * from t;
  x 
 ---
  1
 (1 row)
 
+--
+create table m(y int);
+--
+merge into m as target
+using t as source
+on target.y = source.x 
+when matched then
+    update set y = 2
+when not matched then
+    insert (y)
+    values(3);
+ERROR:  pg_iot: UPDATE and DELETE and MERGE operations are disabled on table "public.t"
