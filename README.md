@@ -48,5 +48,5 @@ IOT tables are cataloged in ```iot.tables```:
 
 Currently there is no way to move an IOT table to a non-IOT table.
 
-ALTER TABLE statements for an IOT table are not defined.
+ALTER TABLE statements are still enabled. 
 
