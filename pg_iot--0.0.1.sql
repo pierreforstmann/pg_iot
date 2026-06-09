@@ -15,6 +15,8 @@ CREATE SCHEMA iot;
 --
 CREATE TABLE iot.tables(
 	namespace name NOT NULL,
-        relname name NOT NULL,
+    relname name NOT NULL,
 	PRIMARY KEY(namespace, relname)
-)
+);
+--
+REVOKE EXECUTE ON pg_iot_set FROM PUBLIC;
