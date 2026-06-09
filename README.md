@@ -7,7 +7,7 @@ pg_iot is a PostgreSQL extension which allows to define table as INSERT only tab
 
 ### Installation
 
-Extension must be loaded at server level with shared_preload_libraries parameter:
+Extension must be loaded at server level with ```shared_preload_libraries``` parameter:
 
 ```
 shared_preload_libraries = 'pg_iot'
