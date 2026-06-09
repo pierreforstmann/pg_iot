@@ -40,7 +40,7 @@ select * from t;
 (1 row)
 
 delete from t;
-ERROR:  pg_iot: UPDATE and DELETE and MERGE operations are disabled on table "public.t"
+ERROR:  pg_iot: UPDATE and DELETE operations are disabled on table "public.t"
 select * from t;
  x 
 ---
@@ -48,7 +48,7 @@ select * from t;
 (1 row)
 
 update t set x=2;
-ERROR:  pg_iot: UPDATE and DELETE and MERGE operations are disabled on table "public.t"
+ERROR:  pg_iot: UPDATE and DELETE operations are disabled on table "public.t"
 select * from t;
  x 
 ---
@@ -58,6 +58,12 @@ select * from t;
 --
 create table m(y int);
 --
+select iot.pg_iot_set('public','m');
+ pg_iot_set 
+------------
+ t
+(1 row)
+
 merge into m as target
 using t as source
 on target.y = source.x 
@@ -66,7 +72,7 @@ when matched then
 when not matched then
     insert (y)
     values(3);
-ERROR:  pg_iot: UPDATE and DELETE and MERGE operations are disabled on table "public.t"
+ERROR:  pg_iot: MERGE operation is disabled for IOT table
 --
 truncate table t;
 ERROR:  pg_iot: TRUNCATE operation is disabled for IOT table

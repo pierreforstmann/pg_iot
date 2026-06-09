@@ -2,7 +2,7 @@
 
 pg_iot is a PostgreSQL extension which allows to define table as INSERT only table (IOT):
 - only INSERT and SELECT statements are allowed
-- UPDATE, DELETE and MERGE statements are forbidden.
+- UPDATE, DELETE, MERGE znd TRUNCATE statements are forbidden.
 
 
 ### Installation
@@ -27,21 +27,22 @@ Connect as superuser and flag table as IOT with ``pg_iot_set`` function giving s
 select iot.pg_iot_set('public','t');
 ```
 
-Trying to run UPDATE or DELETE or MERGE on IOT table raise errors:
+Trying to run UPDATE or DELETE or MERGE on IOT table is raising errors:
 ```
 delete from t;
-ERROR:  pg_iot: UPDATE and DELETE and MERGE operations are disabled on table "public.t"
+ERROR:  pg_iot: UPDATE and DELETE operations are disabled on table "public.t"
 update t set x=2;
-ERROR:  pg_iot: UPDATE and DELETE and MERGE operations are disabled on table "public.t"
+ERROR:  pg_iot: UPDATE and DELETE operations are disabled on table "public.t"
 ```
 
 IOT tables are cataloged in ```iot.tables```:
 
 ```
 # select * from iot.tables;
- namespace | relname 
------------+---------
- public    | t
+ namespace | relname | reloid 
+-----------+---------+--------
+ public    | t       |  52252
+
 (1 row)
 ```
 ## Limitations

@@ -25,13 +25,14 @@
 #include "executor/spi.h"
 #include "tcop/utility.h"
 #include "nodes/makefuncs.h"
+#include "parser/parsetree.h"
 
 PG_MODULE_MAGIC;
 
 static ExecutorStart_hook_type prev_ExecutorStart = NULL;
-static void iot_executor_hook(QueryDesc *queryDesc, int eflags);
-static ProcessUtility_hook_type prev_process_utility_hook = NULL;
+static void iot_executor_start_hook(QueryDesc *queryDesc, int eflags);
 
+static ProcessUtility_hook_type prev_process_utility_hook = NULL;
 static void iot_utility_hook(PlannedStmt *pstmt, const char *queryString,
 			    bool readOnlyTree,
 			    ProcessUtilityContext context,
@@ -39,6 +40,9 @@ static void iot_utility_hook(PlannedStmt *pstmt, const char *queryString,
 		      	    QueryEnvironment *queryEnv,
 		       	    DestReceiver *dest, QueryCompletion *qc);
 static Oid get_table_oid(char *schema, char *table);
+
+static ExecutorRun_hook_type prev_ExecutorRun = NULL;
+static void iot_executor_run_hook(QueryDesc *queryDEsc, ScanDirection direction, uint64 count);
 
 PG_FUNCTION_INFO_V1(pg_iot_set);
 
@@ -167,18 +171,21 @@ static bool oid_is_iot(const Oid oid)
 void _PG_init(void)
 {
     prev_ExecutorStart = ExecutorStart_hook;
-    ExecutorStart_hook = iot_executor_hook;
+    ExecutorStart_hook = iot_executor_start_hook;
+
+    prev_ExecutorRun = ExecutorRun_hook;
+    ExecutorRun_hook = iot_executor_run_hook;
 
     prev_process_utility_hook = ProcessUtility_hook;
     ProcessUtility_hook = iot_utility_hook;
 }
 
 /*
- * iot_executor_hook
+ * iot_executor_start_hook
  */
-static void iot_executor_hook(QueryDesc *queryDesc, int eflags)
+static void iot_executor_start_hook(QueryDesc *queryDesc, int eflags)
 {
-    if (queryDesc->operation == CMD_UPDATE || queryDesc->operation == CMD_DELETE || queryDesc->operation == CMD_MERGE)
+    if (queryDesc->operation == CMD_UPDATE || queryDesc->operation == CMD_DELETE) 
     {
         List *rtable = queryDesc->plannedstmt->rtable;
         ListCell *lc;
@@ -199,13 +206,13 @@ static void iot_executor_hook(QueryDesc *queryDesc, int eflags)
                     relation_close(rel, AccessShareLock);
                     ereport(ERROR,
                             (errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-                             errmsg("pg_iot: UPDATE and DELETE and MERGE operations are disabled on table \"%s.%s\"", schemaname, relname)));
+                             errmsg("pg_iot: UPDATE and DELETE operations are disabled on table \"%s.%s\"", schemaname, relname)));
                 }
 
                 relation_close(rel, AccessShareLock);
             }
         }
-    }
+    } 
 
     if (prev_ExecutorStart)
         prev_ExecutorStart(queryDesc, eflags);
@@ -213,12 +220,36 @@ static void iot_executor_hook(QueryDesc *queryDesc, int eflags)
         standard_ExecutorStart(queryDesc, eflags);
 }
 
+
+static void iot_executor_run_hook(QueryDesc *queryDesc, ScanDirection direction, uint64 count)
+{
+    if (queryDesc->plannedstmt->commandType == CMD_MERGE)
+    {
+       ResultRelInfo *ri = queryDesc->estate->es_result_relations[0];
+
+      if (ri != NULL && ri->ri_RelationDesc != NULL)
+      {
+           Oid relid = RelationGetRelid(ri->ri_RelationDesc);
+           if (oid_is_iot(relid))
+                ereport(ERROR,
+                    (errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+                     errmsg("pg_iot: MERGE operation is disabled for IOT table")));
+
+      }
+    }
+
+    if (prev_ExecutorRun)
+        prev_ExecutorRun(queryDesc, direction, count);
+    else
+        standard_ExecutorRun(queryDesc, direction, count);
+}
+
+
 /*
  * ProcessUtility hook.
  *
  * Block TRUNCATE 
  */
-
 
 static void iot_utility_hook(PlannedStmt *pstmt, const char *queryString,
 			 bool readOnlyTree,

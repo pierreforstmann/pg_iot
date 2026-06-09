@@ -22,6 +22,7 @@ select * from t;
 --
 create table m(y int);
 --
+select iot.pg_iot_set('public','m');
 merge into m as target
 using t as source
 on target.y = source.x 
