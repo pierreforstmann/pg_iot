@@ -23,13 +23,31 @@
 #include "postgres_ext.h"
 #include "utils/builtins.h"
 #include "executor/spi.h"
+#include "tcop/utility.h"
+#include "nodes/makefuncs.h"
 
 PG_MODULE_MAGIC;
 
 static ExecutorStart_hook_type prev_ExecutorStart = NULL;
 static void iot_executor_hook(QueryDesc *queryDesc, int eflags);
+static ProcessUtility_hook_type prev_process_utility_hook = NULL;
+
+static void iot_utility_hook(PlannedStmt *pstmt, const char *queryString,
+			    bool readOnlyTree,
+			    ProcessUtilityContext context,
+			    ParamListInfo params,
+		      	    QueryEnvironment *queryEnv,
+		       	    DestReceiver *dest, QueryCompletion *qc);
+static Oid get_table_oid(char *schema, char *table);
 
 PG_FUNCTION_INFO_V1(pg_iot_set);
+
+
+static Oid get_table_oid(char *schema, char *table)
+{
+    RangeVar *rv = makeRangeVar(schema, table, -1);
+    return RangeVarGetRelid(rv, NoLock, false);
+}
 
 /*
  * set table as insert-only table 
@@ -41,22 +59,23 @@ Datum pg_iot_set(PG_FUNCTION_ARGS)
         char *table_name;
 
 	StringInfoData buf_insert;
-	Oid argtypes[2] = { TEXTOID, TEXTOID };
+	Oid argtypes[3] = { TEXTOID, TEXTOID, OIDOID };
 	SPIPlanPtr plan_ptr;
-	Datum values[2];
+	Datum values[3];
 	int ret_code;
 
         schema_name = PG_GETARG_CSTRING(0);
         table_name = PG_GETARG_CSTRING(1);
 
 	initStringInfo(&buf_insert);
-        appendStringInfo(&buf_insert, "INSERT into iot.tables values($1, $2)");
+        appendStringInfo(&buf_insert, "INSERT into iot.tables values($1, $2, $3)");
 
         SPI_connect();
 
-        plan_ptr = SPI_prepare(buf_insert.data, 2, argtypes);
+        plan_ptr = SPI_prepare(buf_insert.data, 3, argtypes);
 	values[0] = CStringGetTextDatum(schema_name);
 	values[1] = CStringGetTextDatum(table_name);
+	values[2] = get_table_oid(schema_name, table_name);
 	ret_code = SPI_execute_plan(plan_ptr, values, NULL, false, 0);
         if (ret_code != SPI_OK_INSERT)
                   elog(ERROR, "INSERT INTO iot.tables failed");
@@ -103,6 +122,44 @@ static bool is_iot(const char *schema_name, const char *table_name)
 	return result;
 }
 
+
+/*
+ * oid_is_iot
+ */
+static bool oid_is_iot(const Oid oid)
+{
+        StringInfoData  buf_select;
+        Oid argtypes[1] = { OIDOID };
+        SPIPlanPtr plan_ptr;
+        Datum values[1];
+        int ret_code;
+        bool result;
+
+        initStringInfo(&buf_select);
+        appendStringInfo(&buf_select,
+                         "SELECT namespace, relname FROM iot.tables WHERE reloid = $1");
+        SPI_connect();
+
+        plan_ptr = SPI_prepare(buf_select.data, 1, argtypes);
+        values[0] = oid;
+        ret_code = SPI_execute_plan(plan_ptr, values, NULL, false, 0);
+
+        if (ret_code != SPI_OK_SELECT)
+                elog(ERROR, "SELECT FROM iot.tables failed");
+        if (SPI_processed == 1)
+        {
+                result = true;
+        }
+        else
+        {
+                result = false;
+        }
+
+        SPI_finish();
+        return result;
+}
+
+
 /*
  * _PG_init
  */
@@ -111,6 +168,9 @@ void _PG_init(void)
 {
     prev_ExecutorStart = ExecutorStart_hook;
     ExecutorStart_hook = iot_executor_hook;
+
+    prev_process_utility_hook = ProcessUtility_hook;
+    ProcessUtility_hook = iot_utility_hook;
 }
 
 /*
@@ -152,4 +212,45 @@ static void iot_executor_hook(QueryDesc *queryDesc, int eflags)
     else
         standard_ExecutorStart(queryDesc, eflags);
 }
+
+/*
+ * ProcessUtility hook.
+ *
+ * Block TRUNCATE 
+ */
+
+
+static void iot_utility_hook(PlannedStmt *pstmt, const char *queryString,
+			 bool readOnlyTree,
+			 ProcessUtilityContext context,
+			 ParamListInfo params,
+			 QueryEnvironment *queryEnv,
+			 DestReceiver *dest, QueryCompletion *qc)
+{
+        if (nodeTag(pstmt->utilityStmt) == T_TruncateStmt ) 
+	{
+             TruncateStmt *stmt = (TruncateStmt *) pstmt->utilityStmt;
+	     ListCell *lc;
+
+             foreach (lc, stmt->relations)
+             {
+                 RangeVar *rv = lfirst_node(RangeVar, lc);
+                 Oid relid = RangeVarGetRelid(rv, AccessExclusiveLock, false);
+                 if (oid_is_iot(relid))
+                    ereport(ERROR,
+                            (errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+                             errmsg("pg_iot: TRUNCATE operation is disabled for IOT table")));
+             }
+	}  
+
+	if (prev_process_utility_hook)
+		(*prev_process_utility_hook)(pstmt, queryString, readOnlyTree,
+					     context, params, queryEnv,
+					     dest, qc);
+	else
+		standard_ProcessUtility(pstmt, queryString, readOnlyTree,
+					context, params, queryEnv,
+					dest, qc);
+}
+
 

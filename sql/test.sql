@@ -30,3 +30,5 @@ when matched then
 when not matched then
     insert (y)
     values(3);
+--
+truncate table t;

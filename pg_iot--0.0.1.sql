@@ -14,7 +14,8 @@ CREATE FUNCTION iot.pg_iot_set(cstring, cstring) RETURNS bool
 --
 CREATE TABLE iot.tables(
 	namespace name NOT NULL,
-    relname name NOT NULL,
+        relname name NOT NULL,
+        reloid Oid NOT NULL,
 	PRIMARY KEY(namespace, relname)
 );
 --
