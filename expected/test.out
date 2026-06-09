@@ -67,3 +67,6 @@ when not matched then
     insert (y)
     values(3);
 ERROR:  pg_iot: UPDATE and DELETE and MERGE operations are disabled on table "public.t"
+--
+truncate table t;
+ERROR:  pg_iot: TRUNCATE operation is disabled for IOT table
